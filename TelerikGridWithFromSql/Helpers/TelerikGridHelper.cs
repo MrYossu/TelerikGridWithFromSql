@@ -54,12 +54,12 @@ public static class TelerikGridHelper {
     string sql = $"select * from {tableName}{sqlFilters} {sqlSort} offset (@Skip) rows fetch next (@PageSize) rows only";
 
     // Dump the SQL and values
-    Console.WriteLine("\n\n\n");
-    Console.WriteLine("Parameters");
-    foreach (SqlParameter pair in values) {
-      Console.WriteLine($"  {pair.ParameterName}: {pair.Value}");
-    }
-    Console.WriteLine(sql);
+    //Console.WriteLine("\n\n\n");
+    //Console.WriteLine("Parameters");
+    //foreach (SqlParameter pair in values) {
+    //  Console.WriteLine($"  {pair.ParameterName}: {pair.Value}");
+    //}
+    //Console.WriteLine(sql);
 
     // Get the data and the total number of rows that match the filters
     List<T> data = await context.Set<T>().FromSqlRaw(sql, values.ToArray()).ToListAsync();
