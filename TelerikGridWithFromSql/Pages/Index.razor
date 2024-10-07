@@ -12,6 +12,7 @@
              OnRead="@LoadData"
              ScrollMode="@GridScrollMode.Virtual"
              FilterMode="@GridFilterMode.FilterRow"
+             ShowColumnMenu="true"
              Height="400px"
              RowHeight="40"
              Sortable="true"
@@ -42,7 +43,7 @@
     // Note that the SqlQueryRaw method will throw an exception if the query does not return any results, which is why we check if there was any data before calling SqlQueryRaw...
     TotalValue = MatchingRows == 0 
       ? 0 
-      : await _context.Database.SqlQueryRaw<decimal>($"select sum(UnitsInStock * UnitPrice) as Value from products{data.SqlFilters}", data.Parameters).FirstAsync();
+      : await _context.Database.SqlQueryRaw<decimal>($"select sum(UnitsInStock * UnitPrice) as Value from products{data.SqlFilters}", data.Parameters).SingleAsync();
   }
 
 }
