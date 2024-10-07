@@ -1,16 +1,15 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Pixata.Extensions;
 using Telerik.Blazor.Components;
 using Telerik.DataSource;
 
 namespace TelerikGridWithFromSql.Helpers;
 
 public static class TelerikGridHelper {
-  public static async Task<(int, string, List<SqlParameter>)> GetData<T>(this GridReadEventArgs args, DbContext context, string tableName, string defaultColumnForSort, ListSortDirection defaultSort = ListSortDirection.Ascending) where T : class =>
+  public static async Task<TelerikGridFilterResults<T>> GetData<T>(this GridReadEventArgs args, DbContext context, string tableName, string defaultColumnForSort, ListSortDirection defaultSort = ListSortDirection.Ascending) where T : class =>
     await GetData<T>(args, context, tableName, defaultColumnForSort, [], defaultSort);
 
-  public static async Task<(int, string, List<SqlParameter>)> GetData<T>(this GridReadEventArgs args, DbContext context, string tableName, string defaultColumnForSort, List<TelerikGridFilterOptions> extraFilters, ListSortDirection defaultSort = ListSortDirection.Ascending) where T : class {
+  public static async Task<TelerikGridFilterResults<T>> GetData<T>(this GridReadEventArgs args, DbContext context, string tableName, string defaultColumnForSort, List<TelerikGridFilterOptions> extraFilters, ListSortDirection defaultSort = ListSortDirection.Ascending) where T : class {
     List<SqlParameter> values = [];
 
     // Set up SQL for filtering
@@ -55,22 +54,23 @@ public static class TelerikGridHelper {
     string sql = $"select * from {tableName}{sqlFilters} {sqlSort} offset (@Skip) rows fetch next (@PageSize) rows only";
 
     // Dump the SQL and values
-    //Console.WriteLine("\n\n\n");
-    //Console.WriteLine("Parameters");
-    //foreach (SqlParameter pair in values) {
-    //  Console.WriteLine($"  {pair.ParameterName}: {pair.Value}");
-    //}
-    //Console.WriteLine(sql);
+    Console.WriteLine("\n\n\n");
+    Console.WriteLine("Parameters");
+    foreach (SqlParameter pair in values) {
+      Console.WriteLine($"  {pair.ParameterName}: {pair.Value}");
+    }
+    Console.WriteLine(sql);
 
     // Get the data and the total number of rows that match the filters
-    args.Data = await context.Set<T>().FromSqlRaw(sql, values.ToArray()).ToObservableCollectionAsync();
+    List<T> data = await context.Set<T>().FromSqlRaw(sql, values.ToArray()).ToListAsync();
+    args.Data = data;
     values.Remove(values.Single(v => v.ParameterName == "@Skip"));
     values.Remove(values.Single(v => v.ParameterName == "@PageSize"));
     int matchingRows = await context.Database.SqlQueryRaw<int>($"select count(*) as Value from {tableName}{sqlFilters}", values.ToArray()).SingleAsync();
     args.Total = matchingRows;
 
     // Return the filter SQL in case the calling code wants to use it (eg to show some totals)
-    return (matchingRows, sqlFilters, values);
+    return new(matchingRows, sqlFilters, values.ToArray(), data);
   }
 
   private static void AddValue(List<SqlParameter> parameters, string member, FilterOperator op, object value, int n) =>
@@ -91,3 +91,5 @@ public static class TelerikGridHelper {
 }
 
 public record TelerikGridFilterOptions(string Member, object Value, FilterOperator Operator);
+
+public record TelerikGridFilterResults<T>(int MatchingRows, string SqlFilters, SqlParameter[] Parameters, IEnumerable<T> Data);

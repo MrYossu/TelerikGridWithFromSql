@@ -2,7 +2,6 @@
 @using TelerikGridWithFromSql.Helpers
 @using Microsoft.EntityFrameworkCore
 @using TelerikGridWithFromSql.Data
-@using Microsoft.Data.SqlClient
 @inject IDbContextFactory<AppDbContext> ContextFactory
 
 <PageTitle>Telerik grid with EF Core FromSql</PageTitle>
@@ -38,8 +37,12 @@
     _context = await ContextFactory.CreateDbContextAsync();
 
   private async Task LoadData(GridReadEventArgs args) {
-    (MatchingRows, string sqlFilters, List<SqlParameter> values) = await args.GetData<Product>(_context, "Products", "ProductName");
-    TotalValue = await _context.Database.SqlQueryRaw<decimal>($"select sum(unitsinstock * unitprice) as Value from products{sqlFilters}", values.ToArray()).FirstAsync();
+    TelerikGridFilterResults<Product> data = await args.GetData<Product>(_context, "Products", "ProductName");
+    MatchingRows = data.MatchingRows;
+    // Note that the SqlQueryRaw method will throw an exception if the query does not return any results, which is why we check if there was any data before calling SqlQueryRaw...
+    TotalValue = MatchingRows == 0 
+      ? 0 
+      : await _context.Database.SqlQueryRaw<decimal>($"select sum(UnitsInStock * UnitPrice) as Value from products{data.SqlFilters}", data.Parameters).FirstAsync();
   }
 
 }
