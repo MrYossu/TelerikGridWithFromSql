@@ -2,6 +2,8 @@
 @using TelerikGridWithFromSql.Helpers
 @using Microsoft.EntityFrameworkCore
 @using TelerikGridWithFromSql.Data
+@using Telerik.DataSource
+@using Telerik.DataSource.Extensions
 @inject IDbContextFactory<AppDbContext> ContextFactory
 
 <PageTitle>Telerik grid with EF Core FromSql</PageTitle>
@@ -38,12 +40,23 @@
     _context = await ContextFactory.CreateDbContextAsync();
 
   private async Task LoadData(GridReadEventArgs args) {
-    TelerikGridFilterResults<Product> data = await args.GetData<Product>(_context, "Products", "ProductName");
+    TelerikGridFilterResults<Product> data = await args.GetData<Product>(_context, "Products", nameof(Product.UnitPrice), [PriceTenToTwenty(), CreateNameFilters()]);
     MatchingRows = data.MatchingRows;
     // Note that the SqlQueryRaw method will throw an exception if the query does not return any results, which is why we check if there was any data before calling SqlQueryRaw...
-    TotalValue = MatchingRows == 0 
-      ? 0 
+    TotalValue = MatchingRows == 0
+      ? 0
       : await _context.Database.SqlQueryRaw<decimal>($"select sum(UnitsInStock * UnitPrice) as Value from products{data.SqlFilters}", data.Parameters).SingleAsync();
   }
+
+  private CompositeFilterDescriptor CreateNameFilters() =>
+    TelerikFilterHelper.CreateOr(nameof(Product.ProductName),
+      new OperatorValue(FilterOperator.Contains, "sauce"),
+      new OperatorValue(FilterOperator.Contains, "a"),
+      new OperatorValue(FilterOperator.StartsWith, "p"));
+
+  private CompositeFilterDescriptor PriceTenToTwenty() =>
+    TelerikFilterHelper.CreateAnd(nameof(Product.UnitPrice),
+      new OperatorValue(FilterOperator.IsGreaterThan, 10),
+      new OperatorValue(FilterOperator.IsLessThan, 20));
 
 }
